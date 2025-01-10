@@ -6,7 +6,7 @@ This project contains a Locust load testing script for RPC services. The main sc
 
 ## Folder Structure
 
-### RPC_Load_Testing_Script/
+### RPC_Load_Testing_Scripts/
 
 |-- **main_locust_load_testing_script.py**  # Main Python script for load testing.
 |-- **rpc_funds_transfer.py**  # This python file conatin web3 rpc transfer methods.
@@ -53,7 +53,7 @@ Navigate to the project directory:
 
 
 ```
-cd RPC_Load_Testing_Script
+cd RPC_Load_Testing_Scripts
 
 ```
 
