@@ -41,9 +41,9 @@ This project contains a Locust load testing script for RPC services. The main sc
 
 ## wallets.csv (csv headers)
 
-__Sender Address__ – The wallet address initiating the transaction 
-__Sender Private Key__ – Private key associated with the sender’s address 
-__Receiver Wallet Address__ – The wallet address receiving the transaction 
+- **Sender Address** – The wallet address initiating the transaction  
+- **Sender Private Key** – Private key associated with the sender’s address  
+- **Receiver Wallet Address** – The wallet address receiving the transaction  
 
 ## transaction_history.csv (csv headers)
 __Sender Address__ – Address initiating the transaction 
