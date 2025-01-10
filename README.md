@@ -8,15 +8,35 @@ This project contains a Locust load testing script for RPC services. The main sc
 
 ### RPC_Load_Testing_Scripts/
 
-|-- **main_locust_load_testing_script.py**  # Main Python script for load testing.
-|-- **rpc_funds_transfer.py**  # This python file conatin web3 rpc transfer methods.
-|-- **wallet_utils.py**  # wallet related functions.
-|-- **.env**  # Which contain RPC url ,chain ID , transferable amount and gas fees.
-|-- **devRequirements.txt**              # Dependencies for Locust and web3 setup 
-|-- **wallets/**                # Folder containing wallet information 
-|   |-- **wallets.csv**                  # CSV with sender/receiver wallet details 
-|-- **transaction_history/**             # Folder for storing transaction history 
-|   |-- **transaction_history_(start_date_time)_between_(end_date_time).csv**      # Logs of transactions during testing like this transaction_history_10-01-2025_12_40_41_between_10-01-2025_12_50_44.csv
+|-- **main_locust_load_testing_script.py**  
+|   Main Python script for executing load tests using Locust.
+
+|-- **rpc_funds_transfer.py**  
+|   Contains Web3 RPC methods for transferring funds.
+
+|-- **wallet_utils.py**  
+|   Includes utility functions related to wallet operations.
+
+|-- **.env**  
+|   Configuration file containing:
+|   - RPC URL  
+|   - Chain ID  
+|   - Transferable amount  
+|   - Gas fees  
+
+|-- **devRequirements.txt**  
+|   List of dependencies required for setting up Locust and Web3.
+
+|-- **wallets/**  
+|   Folder containing wallet-related data.
+|   |-- **wallets.csv**  
+|       CSV file with sender and receiver wallet details.
+
+|-- **transaction_history/**  
+|   Folder for storing logs of transactions performed during testing.
+|   |-- **transaction_history_(start_date_time)_between_(end_date_time).csv**  
+|       Transaction logs in CSV format, with file names indicating the testing period.  
+|       Example: `transaction_history_10-01-2025_12_40_41_between_10-01-2025_12_50_44.csv`
 
 
 ## wallets.csv (csv headers)
