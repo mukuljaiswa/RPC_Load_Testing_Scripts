@@ -46,12 +46,11 @@ This project contains a Locust load testing script for RPC services. The main sc
 - **Receiver Wallet Address** – The wallet address receiving the transaction  
 
 ## transaction_history.csv (csv headers)
-__Sender Address__ – Address initiating the transaction 
-__Transaction Hash__ – Unique hash of the transaction 
-__Status – Transaction__ status (Success/Fail) 
-__Time Taken__ – Time taken for the transaction to complete 
 
-
+- **Sender Address** – Address initiating the transaction  
+- **Transaction Hash** – Unique hash of the transaction  
+- **Status** – Transaction status (Success/Fail)  
+- **Time Taken** – Time taken for the transaction to complete  
 
 ## Setup Instructions
 
