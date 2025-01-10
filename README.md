@@ -109,7 +109,7 @@ Real-time monitoring includes total users, request success/fail rates, RPS (Requ
 
 Logs will display transaction details such as sender, receiver, and transaction hash directly in the terminal.
 
-### 9.topping the Test
+### 9.stopping the Test
 
 Click the Stop button on the web interface to halt the test.
 
