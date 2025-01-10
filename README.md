@@ -63,7 +63,12 @@ cd RPC_Load_Testing_Scripts
 ```
 sudo apt install python3-venv
 python3 -m venv myenv
+
+for Linux/Mac use 
 source myenv/bin/activate
+
+for windows use
+myenv\Scripts\activate
 
 ```
 
