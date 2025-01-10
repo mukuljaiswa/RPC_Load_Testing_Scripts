@@ -59,9 +59,7 @@ cd RPC_Load_Testing_Scripts
 
 ### 3.Set up a virtual environment:
 
-
 ```
-sudo apt install python3-venv
 python3 -m venv myenv
 
 for Linux/Mac use 
@@ -71,6 +69,7 @@ for windows use
 myenv\Scripts\activate
 
 ```
+Sometimes, it shows an error message while creating a virtual machine in Linux/macOS using source myenv/bin/activate. To resolve this, run sudo apt install python3-venv and then try step 3 again.
 
 ### 4.Install dependencies:
 
