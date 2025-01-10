@@ -45,7 +45,7 @@ __Sender Address__ – The wallet address initiating the transaction
 __Sender Private Key__ – Private key associated with the sender’s address 
 __Receiver Wallet Address__ – The wallet address receiving the transaction 
 
-##transaction_history.csv (csv headers)
+## transaction_history.csv (csv headers)
 __Sender Address__ – Address initiating the transaction 
 __Transaction Hash__ – Unique hash of the transaction 
 __Status – Transaction__ status (Success/Fail) 
