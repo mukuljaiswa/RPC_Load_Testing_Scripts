@@ -61,5 +61,4 @@ class BlockchainTaskSet(TaskSet):
 
             save_transaction_log()
         except Exception as e:
-            with log_lock:
-                transaction_log.append([sender_address, "N/A", "Failed", "N/A"])
+                        print(f"Error occurred: {e}")
