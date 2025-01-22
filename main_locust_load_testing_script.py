@@ -42,3 +42,4 @@ class BlockchainUser(HttpUser):
     tasks = [BlockchainTaskSet]
     wait_time = between(1, 5)
     host = RPC_HOST
+
