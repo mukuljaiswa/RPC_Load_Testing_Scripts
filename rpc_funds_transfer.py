@@ -19,7 +19,7 @@ ETHER_VALUE = os.getenv('ETHER_VALUE')
 GAS_PRICE = os.getenv('GAS_PRICE')
 GAS = int(os.getenv('GAS'))
 
-wallets = load_wallets('wallets/wallets.csv')
+wallets = load_wallets('fire_multiple_wallets/fire10.csv')
 
 #Prometheus metrics
 SUCCESSFUL_TRANSACTIONS = Counter('successful_transactions', 'Number of successful transactions')
