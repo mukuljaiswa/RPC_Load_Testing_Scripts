@@ -7,8 +7,6 @@ from wallet_utils import load_wallets, transaction_log_file, log_lock, transacti
 from dotenv import load_dotenv
 import os
 import threading
-from prometheus_client import start_http_server, Counter
-
 
 # Load environment variables
 load_dotenv()
@@ -19,20 +17,7 @@ ETHER_VALUE = os.getenv('ETHER_VALUE')
 GAS_PRICE = os.getenv('GAS_PRICE')
 GAS = int(os.getenv('GAS'))
 
-wallets = load_wallets('fire_multiple_wallets/fire10.csv')
-
-#Prometheus metrics
-SUCCESSFUL_TRANSACTIONS = Counter('successful_transactions', 'Number of successful transactions')
-FAILED_TRANSACTIONS = Counter('failed_transactions', 'Number of failed transactions')
-
-def log_failed_transaction(sender_address, message, time_taken="N/A"):
-    """Logs a failed transaction and increments the Prometheus counter."""
-    FAILED_TRANSACTIONS.inc()
-    transaction_log.append([
-        sender_address, "N/A", "Failed", time_taken
-    ])
-    print(f"\033[91mTransaction failed:\033[0m {message}, Sender_Address: {sender_address}")
-
+wallets = load_wallets('fire_multiple_wallets/fire7.csv')
 
 class BlockchainTaskSet(TaskSet):
     @task(1)
@@ -72,33 +57,26 @@ class BlockchainTaskSet(TaskSet):
                     response_json = response.json()
                     if "error" in response_json:
                         error_message = response_json["error"]["message"]
-                        log_failed_transaction(sender_address, error_message, f"{time_taken:.2f}s")
                         response.failure(f"Transaction failed: {error_message}")
+                        transaction_log.append([ sender_address, "N/A", "Failed", time_taken])
+
                     else:
                         transaction_hash = response_json.get("result", None)
                         status = "Success"
-                        SUCCESSFUL_TRANSACTIONS.inc()
+                        #SUCCESSFUL_TRANSACTIONS.inc()
                         transaction_log.append([
                             sender_address, transaction_hash or "N/A",
                             status, f"{time_taken:.2f}s"
                         ])
+
                         nonce_tracker[sender_address] = nonce + 1
                         transaction_counter["total_successful"] += 1
                         response.success()
                         print(f"\033[93mTransaction sent\033[0m: {status}  {response.text}, | \033[92mStatus: {status} \033[0m| Time Taken: {time_taken:.2f}s, Sender_Address {sender_address}")
                 except json.JSONDecodeError:
-                    log_failed_transaction(sender_address, "Error parsing JSON response")
-                    response.failure("Error parsing JSON response")
+                    response.failure(sender_address,"Error parsing JSON response")
 
 
             save_transaction_log()
         except Exception as e:
                         print(f"Error occurred: {e}")
-
-# Start Prometheus metrics server in a background thread
-def start_prometheus_metrics_server():
-    start_http_server(8000)  # Expose metrics on port 8000
-    print("Prometheus metrics server started on port 8000.")
-
-if threading.current_thread() == threading.main_thread():
-    threading.Thread(target=start_prometheus_metrics_server, daemon=True).start()
