@@ -17,7 +17,9 @@ ETHER_VALUE = os.getenv('ETHER_VALUE')
 GAS_PRICE = os.getenv('GAS_PRICE')
 GAS = int(os.getenv('GAS'))
 
-wallets = load_wallets('fire_multiple_wallets/fire7.csv')
+WALLET_PATH=os.getenv('WALLET_PATH')
+ 
+wallets = load_wallets(WALLET_PATH)
 
 class BlockchainTaskSet(TaskSet):
     @task(1)
@@ -63,7 +65,6 @@ class BlockchainTaskSet(TaskSet):
                     else:
                         transaction_hash = response_json.get("result", None)
                         status = "Success"
-                        #SUCCESSFUL_TRANSACTIONS.inc()
                         transaction_log.append([
                             sender_address, transaction_hash or "N/A",
                             status, f"{time_taken:.2f}s"
