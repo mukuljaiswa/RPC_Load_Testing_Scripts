@@ -3,6 +3,8 @@ import os
 import threading
 from datetime import datetime
 from dotenv import load_dotenv
+import json
+import random
 
 transaction_log_file = None
 log_lock = threading.Lock()
@@ -10,12 +12,10 @@ transaction_log = []
 transaction_counter = {"total_attempted": 0, "total_successful": 0}
 nonce_tracker = {}
 
-# Load wallets from CSV
+# Load wallets from JSON
 def load_wallets(file_path):
     with open(file_path, 'r') as f:
-        reader = csv.reader(f)
-        next(reader)
-        return [row for row in reader]
+        return json.load(f)
 
 # Ensure transaction log file exists
 def check_and_create_transaction_log_file():
