@@ -17,15 +17,25 @@ ETHER_VALUE = os.getenv('ETHER_VALUE')
 GAS_PRICE = os.getenv('GAS_PRICE')
 GAS = int(os.getenv('GAS'))
 
-WALLET_PATH=os.getenv('WALLET_PATH')
+SENDER_WALLET_PATH=os.getenv('SENDER_WALLET_PATH')
+RECEIVER_WALLET_PATH=os.getenv('RECEIVER_WALLET_PATH')
+
  
-wallets = load_wallets(WALLET_PATH)
+sender_wallets_load =load_wallets(SENDER_WALLET_PATH)
+receiver_wallets_load=load_wallets(RECEIVER_WALLET_PATH)
 
 class BlockchainTaskSet(TaskSet):
     @task(1)
     def transfer(self):
         start_time = time.time()
-        sender_address, sender_privateKey, receiver_address = random.choice(wallets)
+      
+        sender_wallets = random.choice(sender_wallets_load)        
+        receiver_wallets=random.choice(receiver_wallets_load)
+            
+        sender_address, sender_privateKey = sender_wallets['address'], sender_wallets['privateKey']
+        receiver_address =  receiver_wallets['address']
+
+
         web3 = Web3(Web3.HTTPProvider(self.user.host))
         print("Sender Address ------->", sender_address)
         print("Receiver Address ----->", receiver_address)
@@ -53,8 +63,9 @@ class BlockchainTaskSet(TaskSet):
 
             # Use catch_response for marking failures
             with self.client.post("/", headers=headers, json=data, catch_response=True) as response:
-                time_taken = time.time() - start_time  # Calculate time taken
 
+                time_taken = time.time() - start_time  # Calculate time taken
+            
                 try:
                     response_json = response.json()
                     if "error" in response_json:
