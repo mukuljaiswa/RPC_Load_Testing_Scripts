@@ -7,6 +7,11 @@ from wallet_utils import load_wallets, transaction_log_file, log_lock, transacti
 from dotenv import load_dotenv
 import os
 import threading
+from prometheus_client import start_http_server, Counter
+from locust import runners, events
+from locust.runners import MasterRunner
+
+
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +28,22 @@ RECEIVER_WALLET_PATH=os.getenv('RECEIVER_WALLET_PATH')
  
 sender_wallets_load =load_wallets(SENDER_WALLET_PATH)
 receiver_wallets_load=load_wallets(RECEIVER_WALLET_PATH)
+
+
+#Prometheus metrics
+SUCCESSFUL_TRANSACTIONS = Counter('successful_transactions', 'Number of successful transactions')
+FAILED_TRANSACTIONS = Counter('failed_transactions', 'Number of failed transactions')
+
+
+def log_failed_transaction(sender_address, message, time_taken="N/A"):
+    """Logs a failed transaction and increments the Prometheus counter."""
+    FAILED_TRANSACTIONS.inc()
+    transaction_log.append([
+        sender_address, "N/A", "Failed", time_taken
+    ])
+    print(f"\033[91mTransaction failed:\033[0m {message}, Sender_Address: {sender_address}")
+
+
 
 class BlockchainTaskSet(TaskSet):
     @task(1)
@@ -70,12 +91,15 @@ class BlockchainTaskSet(TaskSet):
                     response_json = response.json()
                     if "error" in response_json:
                         error_message = response_json["error"]["message"]
+                        log_failed_transaction(sender_address, error_message, f"{time_taken:.2f}s")
                         response.failure(f"Transaction failed: {error_message}")
                         transaction_log.append([ sender_address, "N/A", "Failed", time_taken])
 
                     else:
                         transaction_hash = response_json.get("result", None)
                         status = "Success"
+                        SUCCESSFUL_TRANSACTIONS.inc()
+
                         transaction_log.append([
                             sender_address, transaction_hash or "N/A",
                             status, f"{time_taken:.2f}s"
@@ -92,3 +116,44 @@ class BlockchainTaskSet(TaskSet):
             save_transaction_log()
         except Exception as e:
                         print(f"Error occurred: {e}")
+
+
+
+
+# Start Prometheus metrics server in a background thread
+def start_prometheus_metrics_server():
+    start_http_server(8000)  # Expose metrics on port 8000
+    print("Prometheus metrics server started on port 8000.")
+
+if threading.current_thread() == threading.main_thread():
+    threading.Thread(target=start_prometheus_metrics_server, daemon=True).start()
+
+
+
+
+
+
+# BASE_PROMETHEUS_PORT = 8000  # Base port for Prometheus
+
+# # Start Prometheus metrics server in a background thread
+# def start_prometheus_metrics_server(environment):
+#     """Starts Prometheus metrics server on an appropriate port based on the execution mode."""
+    
+#     # Check if we are running in multi-process mode
+#     is_multi_process = any(arg.startswith("--processes") for arg in sys.argv)
+    
+#     if is_multi_process:
+#         if isinstance(environment.runner, MasterRunner):
+#             port = BASE_PROMETHEUS_PORT  # Master always uses 8000
+#         else:
+#             worker_index = getattr(runners, "worker_index", os.getpid() % 1000)  # Unique worker index
+#             port = BASE_PROMETHEUS_PORT + worker_index  # Workers use 8001, 8002, etc.
+#     else:
+#         if environment.runner:  # Single process mode
+#             port = BASE_PROMETHEUS_PORT  # Always 8000 in single process mode
+
+#     start_http_server(port)
+#     print(f"Prometheus metrics server started on port {port}.")
+
+# if threading.current_thread() == threading.main_thread():
+#     threading.Thread(target=start_prometheus_metrics_server, daemon=True).start()
