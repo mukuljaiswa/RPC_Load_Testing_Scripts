@@ -15,14 +15,30 @@ RPC_HOST = os.getenv('RPC_HOST')
 
 test_start_time = None
 
-# Check if the script is running as a master or worker
+# Check if the script is running as master, worker, or standalone
 is_master = "--master" in sys.argv
+is_worker = "--worker" in sys.argv
+is_process_mode = any(arg.startswith("--processes") for arg in sys.argv)
 
-# Start Prometheus server only if running as master
-if is_master:
-    print("Starting Prometheus on Master Node...")
-    prometheus_thread = threading.Thread(target=start_prometheus_metrics_server, daemon=True)
-    prometheus_thread.start()
+if is_worker:
+    print("\n[INFO] This is a Locust worker node. Use the master IP and Prometheus port to view Prometheus logs.\n")
+
+# If --processes is used, show a message and do not start Prometheus
+elif is_process_mode:
+    print(
+        "\n[INFO] Load testing will run successfully, but Prometheus will NOT start "
+        "because it may cause conflicts with the same port.\n"
+        "To use Prometheus, run in master-worker mode:\n"
+        "  locust --master -f main_locust_load_testing_script.py\n"
+        "Or run Locust in single-core mode with Prometheus enabled:\n"
+        "  locust -f main_locust_load_testing_script.py\n"
+    )
+else:
+    # Start Prometheus only if running as master OR standalone mode, but NOT with --processes
+    if is_master or not is_worker:
+        print("[INFO] Starting Prometheus metrics server...")
+        prometheus_thread = threading.Thread(target=start_prometheus_metrics_server, daemon=True)
+        prometheus_thread.start()
 
 # Event Listeners
 @events.test_start.add_listener

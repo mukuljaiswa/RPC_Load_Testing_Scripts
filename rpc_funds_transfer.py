@@ -19,12 +19,12 @@ RECEIVER_WALLET_PATH = os.getenv('RECEIVER_WALLET_PATH')
 sender_wallets_load = load_wallets(SENDER_WALLET_PATH)
 receiver_wallets_load = load_wallets(RECEIVER_WALLET_PATH)
 
-def log_failed_transaction(sender_address, message, time_taken="N/A"):
-    """Logs a failed transaction."""
-    transaction_log.append([
-        sender_address, "N/A", "Failed", time_taken
-    ])
-    print(f"\033[91mTransaction failed:\033[0m {message}, Sender_Address: {sender_address}")
+# def log_failed_transaction(sender_address, message, time_taken="N/A"):
+#     """Logs a failed transaction."""
+#     transaction_log.append([
+#         sender_address, "N/A", "Failed", time_taken
+#     ])
+#     print(f"\033[91mTransaction failed:\033[0m {message}, Sender_Address: {sender_address}")
 
 class BlockchainTaskSet(TaskSet):
     @task(1)
@@ -63,7 +63,7 @@ class BlockchainTaskSet(TaskSet):
                     response_json = response.json()
                     if "error" in response_json:
                         error_message = response_json["error"]["message"]
-                        log_failed_transaction(sender_address, error_message, f"{time_taken:.2f}s")
+                      #  log_failed_transaction(sender_address, error_message, f"{time_taken:.2f}s")
                         response.failure(f"Transaction failed: {error_message}")
                         transaction_log.append([sender_address, "N/A", "Failed", time_taken])
                     else:
