@@ -43,17 +43,35 @@ def save_transaction_log():
         writer.writerows(transaction_log)
     transaction_log.clear()
 
-# Rename transaction log file
-def rename_transaction_log_file(test_start_time):
-    global transaction_log_file
-    stop_time = datetime.now()
-    start_timestamp = test_start_time.strftime("%d-%m-%Y_%H_%M_%S")
-    stop_timestamp = stop_time.strftime("%d-%m-%Y_%H_%M_%S")
-    new_filename = f"transaction_history/transaction_history_{start_timestamp}_between_{stop_timestamp}.csv"
-    os.rename(transaction_log_file, new_filename)
+import os
+from datetime import datetime
 
-    transaction_log_file = None
-    ensure_header_in_file(new_filename)
+def rename_transaction_log_file(test_start_time):
+    """Safely rename transaction log file after test completion."""
+    global transaction_log_file
+
+    if transaction_log_file is None:
+        print("[WARNING] Transaction log file is not set. Skipping renaming.")
+        return
+
+    if not os.path.exists(transaction_log_file):
+        print(f"[WARNING] Transaction log file '{transaction_log_file}' not found. Skipping renaming.")
+        return
+
+    try:
+        stop_time = datetime.now()
+        start_timestamp = test_start_time.strftime("%d-%m-%Y_%H_%M_%S")
+        stop_timestamp = stop_time.strftime("%d-%m-%Y_%H_%M_%S")
+        new_filename = f"transaction_history/transaction_history_{start_timestamp}_to_{stop_timestamp}.csv"
+
+        os.rename(transaction_log_file, new_filename)
+        transaction_log_file = None  # Reset global variable
+
+        ensure_header_in_file(new_filename)
+        print(f"[INFO] Renamed transaction log to {new_filename}")
+
+    except Exception as e:
+        print(f"[ERROR] Failed to rename transaction log: {e}")
 
 
 # Ensure header in transaction log file

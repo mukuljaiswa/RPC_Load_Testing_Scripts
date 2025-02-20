@@ -5,9 +5,10 @@ from locust.runners import MasterRunner
 from dotenv import load_dotenv
 import os
 import threading
-from prometheus_metrics import start_prometheus_metrics_server  # Import Prometheus function
-from rpc_funds_transfer import BlockchainTaskSet  # Import BlockchainTaskSet
+from prometheus_metrics import start_prometheus_metrics_server
+from rpc_funds_transfer import BlockchainTaskSet
 from wallet_utils import initialize_transaction_log, rename_transaction_log_file
+from emailable_report import send_email, remove_old_report
 
 # Load environment variables
 load_dotenv()
@@ -15,15 +16,13 @@ RPC_HOST = os.getenv('RPC_HOST')
 
 test_start_time = None
 
-# Check if the script is running as master, worker, or standalone
+# Check if running as master, worker, or standalone
 is_master = "--master" in sys.argv
 is_worker = "--worker" in sys.argv
 is_process_mode = any(arg.startswith("--processes") for arg in sys.argv)
 
 if is_worker:
-    print("\n[INFO] This is a Locust worker node. Use the master IP and Prometheus port to view Prometheus logs.\n")
-
-# If --processes is used, show a message and do not start Prometheus
+    print("\n[INFO] This is a Locust worker node. No email will be sent from this node.\n")
 elif is_process_mode:
     print(
         "\n[INFO] Load testing will run successfully, but Prometheus will NOT start "
@@ -31,10 +30,10 @@ elif is_process_mode:
         "To use Prometheus, run in master-worker mode:\n"
         "  locust --master -f main_locust_load_testing_script.py\n"
         "Or run Locust in single-core mode with Prometheus enabled:\n"
-        "  locust -f main_locust_load_testing_script.py\n"
+        "  locust -f main_locust_load_testing_script.py --html=locust_report.html\n"
     )
 else:
-    # Start Prometheus only if running as master OR standalone mode, but NOT with --processes
+    # Start Prometheus only in master or standalone mode
     if is_master or not is_worker:
         print("[INFO] Starting Prometheus metrics server...")
         prometheus_thread = threading.Thread(target=start_prometheus_metrics_server, daemon=True)
@@ -46,18 +45,29 @@ def on_test_start(environment, **kwargs):
     global test_start_time
     test_start_time = datetime.now()
     initialize_transaction_log()
-    print("Test started.")
+    remove_old_report()  # Delete old report before starting
+    print("[INFO] Load test started.")
 
 @events.test_stop.add_listener
 def on_test_stop(environment, **kwargs):
+    global test_start_time
+
     if test_start_time is None:
-        print("Test never started.")
+        print("[WARNING] Test never started.")
         return
 
-    if isinstance(environment.runner, MasterRunner):  # Ensure it runs only on master
+    # Ensure only the master node renames the transaction log file
+    if isinstance(environment.runner, MasterRunner) or (not is_worker and not is_process_mode):
+        print("[INFO] Renaming transaction log file...")
         rename_transaction_log_file(test_start_time)
 
-    print("Stopped Load Testing !!!")
+    if is_master or (not is_worker and not is_process_mode) or (is_process_mode and os.getpid() == min(os.getpid(), *os.sched_getaffinity(0))):
+        print("[INFO] Checking for Locust report before sending email...")
+        send_email()
+        
+
+    print("[INFO] Stopped Load Testing !!!")
+
 
 # User Class
 class BlockchainUser(HttpUser):
