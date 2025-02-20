@@ -19,13 +19,6 @@ RECEIVER_WALLET_PATH = os.getenv('RECEIVER_WALLET_PATH')
 sender_wallets_load = load_wallets(SENDER_WALLET_PATH)
 receiver_wallets_load = load_wallets(RECEIVER_WALLET_PATH)
 
-# def log_failed_transaction(sender_address, message, time_taken="N/A"):
-#     """Logs a failed transaction."""
-#     transaction_log.append([
-#         sender_address, "N/A", "Failed", time_taken
-#     ])
-#     print(f"\033[91mTransaction failed:\033[0m {message}, Sender_Address: {sender_address}")
-
 class BlockchainTaskSet(TaskSet):
     @task(1)
     def transfer(self):
