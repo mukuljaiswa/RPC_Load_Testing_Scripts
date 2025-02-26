@@ -21,7 +21,7 @@ def fetch_locust_metrics():
             response = requests.get(LOCUST_MASTER_IP_URL)
             data = response.json()
             for stat in data.get("stats", []):
-                if stat["name"] == "/":
+                if stat["name"] == "//":
                     SUCCESSFUL_TRANSACTIONS.set(stat["num_requests"] - stat["num_failures"])
                     FAILED_TRANSACTIONS.set(stat["num_failures"])
         except Exception as e:

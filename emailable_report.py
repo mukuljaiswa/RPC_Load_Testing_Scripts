@@ -3,6 +3,7 @@ import requests
 import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -11,7 +12,7 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_RECIPIENTS = os.getenv("EMAIL_RECIPIENTS").split(",")
 
 report_file = "locust_report.html"
-locust_report_url = "http://localhost:8089/stats/report?theme=dark"  # New Locust report download URL
+locust_report_url = "http://localhost:8089/stats/report?theme=dark"  # Locust report download URL
 
 def remove_old_report():
     if os.path.exists(report_file):
@@ -34,7 +35,7 @@ def download_report():
         print(f"[ERROR] Failed to download report: {e}")
         return False
 
-def send_email():
+def send_email(test_start_time=None, test_end_time=None):
     if os.path.exists(report_file):
         os.remove(report_file)
         print("[INFO] Deleted previous report before downloading new one.")
@@ -48,11 +49,29 @@ def send_email():
         return
     
     try:
+
+        # Format test start and end times in 12-hour format with AM/PM
+        start_time_str = test_start_time.strftime("%d-%m-%Y %I:%M:%S %p")
+        end_time_str = test_end_time.strftime("%d-%m-%Y %I:%M:%S %p")
+
+        
+
         msg = EmailMessage()
-        msg["Subject"] = "Locust Load Test Report"
+        msg["Subject"] = "Locust Load Test Report" 
         msg["From"] = EMAIL_SENDER
         msg["To"] = ", ".join(EMAIL_RECIPIENTS)
-        msg.set_content("Please find the attached Locust HTML performance report.")
+        
+        # Friendly email content
+        email_body = (
+            f"Hello,\n\n"
+            f"The Locust load test has been successfully completed.\n\n"
+            f"Test Start Time: {start_time_str}\n"
+            f"Test End Time: {end_time_str}\n\n"
+            f"Please find the attached Locust HTML performance report for detailed insights.\n\n"
+            f"Best regards,\n"
+            f"Load Testing Team"
+        )
+        msg.set_content(email_body)
         
         with open(report_file, "rb") as f:
             file_data = f.read()
@@ -65,3 +84,4 @@ def send_email():
         print(f"[INFO] Email sent successfully to {EMAIL_RECIPIENTS}")
     except Exception as e:
         print(f"[ERROR] Failed to send email: {e}")
+

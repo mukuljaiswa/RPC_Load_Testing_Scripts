@@ -55,6 +55,8 @@ def on_test_stop(environment, **kwargs):
     if test_start_time is None:
         print("[WARNING] Test never started.")
         return
+    
+    test_end_time = datetime.now()  # Capture test end time
 
     # Ensure only the master node renames the transaction log file
     if isinstance(environment.runner, MasterRunner) or (not is_worker and not is_process_mode):
@@ -63,7 +65,7 @@ def on_test_stop(environment, **kwargs):
 
     if is_master or (not is_worker and not is_process_mode) or (is_process_mode and os.getpid() == min(os.getpid(), *os.sched_getaffinity(0))):
         print("[INFO] Checking for Locust report before sending email...")
-        send_email()
+        send_email(test_start_time, test_end_time)
         
 
     print("[INFO] Stopped Load Testing !!!")
@@ -72,5 +74,5 @@ def on_test_stop(environment, **kwargs):
 # User Class
 class BlockchainUser(HttpUser):
     tasks = [BlockchainTaskSet]
-    wait_time = between(1, 5)
+    wait_time = between(1, 3)
     host = RPC_HOST
