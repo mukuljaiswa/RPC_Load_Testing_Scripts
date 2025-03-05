@@ -55,7 +55,7 @@ def rename_transaction_log_file(test_start_time):
         return
 
     if not os.path.exists(transaction_log_file):
-        print(f"[WARNING] Transaction log file '{transaction_log_file}' not found. Skipping renaming.")
+        #print(f"[WARNING] Transaction log file '{transaction_log_file}' not found. Skipping renaming.")
         return
 
     try:

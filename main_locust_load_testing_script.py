@@ -58,10 +58,14 @@ def on_test_stop(environment, **kwargs):
     
     test_end_time = datetime.now()  # Capture test end time
 
-    # Ensure only the master node renames the transaction log file
-    if isinstance(environment.runner, MasterRunner) or (not is_worker and not is_process_mode):
-        print("[INFO] Renaming transaction log file...")
-        rename_transaction_log_file(test_start_time)
+    # # Ensure only the master node renames the transaction log file
+    # if isinstance(environment.runner, MasterRunner) or (not is_worker and not is_process_mode):
+    #     print("[INFO] Renaming transaction log file...")
+    #     rename_transaction_log_file(test_start_time)
+
+     # Rename transaction log file on both master and worker nodes
+    print("[INFO] Renaming transaction log file on all nodes...")
+    rename_transaction_log_file(test_start_time)
 
     if is_master or (not is_worker and not is_process_mode) or (is_process_mode and os.getpid() == min(os.getpid(), *os.sched_getaffinity(0))):
         print("[INFO] Checking for Locust report before sending email...")
