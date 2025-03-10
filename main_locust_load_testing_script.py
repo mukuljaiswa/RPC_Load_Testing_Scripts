@@ -10,6 +10,8 @@ from rpc_funds_transfer import BlockchainTaskSet
 from wallet_utils import initialize_transaction_log, rename_transaction_log_file
 from emailable_report import send_email, remove_old_report
 
+from locust import constant
+
 # Load environment variables
 load_dotenv()
 RPC_HOST = os.getenv('RPC_HOST')
@@ -78,5 +80,9 @@ def on_test_stop(environment, **kwargs):
 # User Class
 class BlockchainUser(HttpUser):
     tasks = [BlockchainTaskSet]
-    wait_time = between(1, 3)
+    #wait_time = between(1,3)
+    wait_time = between(0.5,1.5)
+    #wait_time = constant(0)
+
+
     host = RPC_HOST
