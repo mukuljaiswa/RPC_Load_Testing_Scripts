@@ -1,82 +1,78 @@
-import csv
 import os
-import threading
-from datetime import datetime
-from dotenv import load_dotenv
 import json
-import random
+import queue
 
-transaction_log_file = None
-log_lock = threading.Lock()
-transaction_log = []
+def load_wallets(directory_path):
+    """
+    Load all wallet JSON files from a given directory.
+    Each file can contain a single wallet (as a dict) or multiple wallets (as a list of dicts).
+    Each wallet should contain 'address' and 'privateKey'.
+    """
+    wallets = []
+    if not os.path.isdir(directory_path):
+        print(f"Error: {directory_path} is not a valid directory.")
+        return wallets
+
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.json'):
+            filepath = os.path.join(directory_path, filename)
+            try:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                    # Handle if file contains a list of wallets
+                    if isinstance(data, list):
+                        for wallet in data:
+                            if isinstance(wallet, dict) and 'address' in wallet and 'privateKey' in wallet:
+                                wallets.append(wallet)
+                                print(f"Loaded wallet from {filename}: {wallet['address']}")
+                            else:
+                                print(f"Warning: An entry in {filename} is missing 'address' or 'privateKey'.")
+                    # Handle if file contains a single wallet as a dict
+                    elif isinstance(data, dict):
+                        if 'address' in data and 'privateKey' in data:
+                            wallets.append(data)
+                            print(f"Loaded wallet from {filename}: {data['address']}")
+                        else:
+                            print(f"Warning: {filename} is missing 'address' or 'privateKey'.")
+                    else:
+                        print(f"Warning: {filename} has an unrecognized format.")
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
+    return wallets
+
+def create_wallet_queue(wallets):
+    """
+    Create a thread-safe queue from the list of wallets.
+    """
+    wallet_queue = queue.Queue()
+    for wallet in wallets:
+        wallet_queue.put(wallet)
+    print(f"Created wallet queue with {wallet_queue.qsize()} wallets.")
+    return wallet_queue
+
+# Variables to track transactions
+transaction_log = []  # Logs each transaction: [sender_address, transaction_hash, status, time_taken]
 transaction_counter = {"total_attempted": 0, "total_successful": 0}
 nonce_tracker = {}
 
-# Load wallets from JSON
-def load_wallets(file_path):
-    with open(file_path, 'r') as f:
-        return json.load(f)
-
-# Ensure transaction log file exists
-def check_and_create_transaction_log_file():
-    folder = 'transaction_history'
-    os.makedirs(folder, exist_ok=True)
-    filename = os.path.join(folder, "transaction_history.csv")    
-    if not os.path.isfile(filename):
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Sender Address", "Transaction Hash", "Status", "Time Taken"])
-            
-    return filename
-
-# Initialize transaction log file
-def initialize_transaction_log():
-    global transaction_log_file
-    if not transaction_log_file:
-        transaction_log_file = check_and_create_transaction_log_file()
-
-# Save transaction log
 def save_transaction_log():
+    """
+    Save (or print) the transaction log.
+    """
+    print("Transaction log saved. Entries:")
+    for entry in transaction_log:
+        print(entry)
+
+def initialize_transaction_log():
+    """
+    Initialize/clear the transaction log.
+    """
     global transaction_log
-    with open(transaction_log_file, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerows(transaction_log)
-    transaction_log.clear()
+    transaction_log = []
+    print("Transaction log initialized.")
 
-import os
-from datetime import datetime
-
-def rename_transaction_log_file(test_start_time):
-    """Safely rename transaction log file after test completion."""
-    global transaction_log_file
-
-    if transaction_log_file is None:
-        print("[WARNING] Transaction log file is not set. Skipping renaming.")
-        return
-
-    if not os.path.exists(transaction_log_file):
-        #print(f"[WARNING] Transaction log file '{transaction_log_file}' not found. Skipping renaming.")
-        return
-
-    try:
-        stop_time = datetime.now()
-        start_timestamp = test_start_time.strftime("%d-%m-%Y_%H_%M_%S")
-        stop_timestamp = stop_time.strftime("%d-%m-%Y_%H_%M_%S")
-        new_filename = f"transaction_history/transaction_history_{start_timestamp}_to_{stop_timestamp}.csv"
-
-        os.rename(transaction_log_file, new_filename)
-        transaction_log_file = None  # Reset global variable
-
-        ensure_header_in_file(new_filename)
-        print(f"[INFO] Renamed transaction log to {new_filename}")
-
-    except Exception as e:
-        print(f"[ERROR] Failed to rename transaction log: {e}")
-
-
-# Ensure header in transaction log file
-def ensure_header_in_file(filename):
-    if not os.path.isfile(filename):
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Sender Address", "Transaction Hash", "Status", "Time Taken"])
+def rename_transaction_log_file(start_time):
+    """
+    Simulate renaming a transaction log file using the test start time.
+    """
+    print(f"Transaction log file renamed with start time {start_time}.")

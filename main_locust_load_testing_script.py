@@ -15,6 +15,7 @@ from locust import constant
 # Load environment variables
 load_dotenv()
 RPC_HOST = os.getenv('RPC_HOST')
+print(RPC_HOST)
 
 test_start_time = None
 
