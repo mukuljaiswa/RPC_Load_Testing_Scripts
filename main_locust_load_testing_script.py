@@ -72,5 +72,8 @@ def on_test_stop(environment, **kwargs):
 # User Class
 class BlockchainUser(HttpUser):
     tasks = [BlockchainTaskSet]
-    wait_time = between(1, 5)  # Define wait time at user level
+    # Define wait time at user level
+    #wait_time = between(1,3)
+    wait_time = between(0.5, 1.5)
+    #wait_time = constant(0)
     host = RPC_HOST
