@@ -6,10 +6,9 @@ from dotenv import load_dotenv
 import os
 import threading
 from prometheus_metrics import start_prometheus_metrics_server
-from rpc_funds_transfer import BlockchainTaskSet
 from wallet_utils import initialize_transaction_log, rename_transaction_log_file
 from emailable_report import send_email, remove_old_report
-
+from rpc_funds_transfer import BlockchainTaskSet  # Imported TaskSet
 from locust import constant
 
 # Load environment variables
@@ -60,12 +59,7 @@ def on_test_stop(environment, **kwargs):
     
     test_end_time = datetime.now()  # Capture test end time
 
-    # # Ensure only the master node renames the transaction log file
-    # if isinstance(environment.runner, MasterRunner) or (not is_worker and not is_process_mode):
-    #     print("[INFO] Renaming transaction log file...")
-    #     rename_transaction_log_file(test_start_time)
-
-     # Rename transaction log file on both master and worker nodes
+    # Rename transaction log file on both master and worker nodes
     print("[INFO] Renaming transaction log file on all nodes...")
     rename_transaction_log_file(test_start_time)
 
@@ -73,16 +67,10 @@ def on_test_stop(environment, **kwargs):
         print("[INFO] Checking for Locust report before sending email...")
         send_email(test_start_time, test_end_time)
         
-
     print("[INFO] Stopped Load Testing !!!")
-
 
 # User Class
 class BlockchainUser(HttpUser):
     tasks = [BlockchainTaskSet]
-    #wait_time = between(1,3)
-    wait_time = between(0.5,1.5)
-    #wait_time = constant(0)
-
-
+    wait_time = between(1, 5)  # Define wait time at user level
     host = RPC_HOST
