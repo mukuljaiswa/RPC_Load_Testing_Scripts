@@ -152,9 +152,12 @@ class BlockchainTaskSet(TaskSet):
                 
                 try:
                     response_json = response.json()
+                    #print("Response ---->",response)
+                    #print("Response response.json()---->",response.json())
                     if "error" in response_json:
                         error_msg = response_json["error"]["message"]
                         response.failure(f"[Worker {self.worker_id}] Transaction failed: {error_msg}")
+                        print(f"[Worker {self.worker_id}] \033[91mTransaction failed\033[0m: {error_msg},| Time Taken: {time_taken:.2f}s | Sender_Address: {sender_address}")
                         transaction_log.append([sender_address, "N/A", "Failed", time_taken])
                     else:
                         tx_hash = response_json.get("result")
