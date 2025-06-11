@@ -8,8 +8,7 @@ import threading
 from prometheus_metrics import start_prometheus_metrics_server
 from wallet_utils import initialize_transaction_log, rename_transaction_log_file
 from emailable_report import send_email, remove_old_report
-from rpc_funds_transfer import BlockchainTaskSet  # Imported TaskSet
-from locust import constant
+from rpc_funds_transfer import BlockchainTaskSet, reset_global_wallet_indices
 
 # Load environment variables
 load_dotenv()
@@ -46,20 +45,18 @@ def on_test_start(environment, **kwargs):
     global test_start_time
     test_start_time = datetime.now()
     initialize_transaction_log()
-    remove_old_report()  # Delete old report before starting
-    print("[INFO] Load test started.")
+    remove_old_report()
+    reset_global_wallet_indices()  # Reset counters on start
+    print("[INFO] Load test started. Wallet counters reset.")
 
 @events.test_stop.add_listener
 def on_test_stop(environment, **kwargs):
     global test_start_time
-
     if test_start_time is None:
         print("[WARNING] Test never started.")
         return
     
-    test_end_time = datetime.now()  # Capture test end time
-
-    # Rename transaction log file on both master and worker nodes
+    test_end_time = datetime.now()
     print("[INFO] Renaming transaction log file on all nodes...")
     rename_transaction_log_file(test_start_time)
 
@@ -69,11 +66,7 @@ def on_test_stop(environment, **kwargs):
         
     print("[INFO] Stopped Load Testing !!!")
 
-# User Class
 class BlockchainUser(HttpUser):
     tasks = [BlockchainTaskSet]
-    # Define wait time at user level
-    #wait_time = between(1,3)
-    wait_time = between(0.5, 1.5)
-    #wait_time = constant(0)
+    wait_time = between(1, 3)
     host = RPC_HOST
