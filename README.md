@@ -92,7 +92,14 @@ Sometimes, it shows an error message while creating a virtual machine in Linux/m
 To resolve this, run 
 
 ```
+
+
 sudo apt install python3-venv 
+
+ or 
+
+sudo apt install python3.10-venv
+
 
 ```
 and then try step 3 again.
