@@ -17,26 +17,29 @@ This project contains a Locust load testing script for RPC services. The main sc
 |-- **wallet_utils.py**  
 |   Includes utility functions related to wallet operations.
 
+|-- **prometheus_metrics.py**  
+|   Script for exposing Locust stats to Prometheus.
+
+|-- **emailable_report.py**  
+|   Script to generate and send transaction reports via email.
+
 |-- **.env**  
-|   Configuration file containing:
-|   - RPC URL  
-|   - Chain ID  
-|   - Transferable amount  
-|   - Gas fees  
+|   Configuration file containing RPC URL, Chain ID, wallet paths, and email credentials.
+
+|-- **.gitignore**  
+|   Git ignore file to manage tracked/untracked files.
 
 |-- **devRequirements.txt**  
-|   List of dependencies required for setting up Locust and Web3.
+|   List of dependencies required for setup (Locust, Web3, etc.).
 
-|-- **wallets/**  
-|   Folder containing wallet-related data.
-|   |-- **wallets.csv**  
-|       CSV file with sender and receiver wallet details.
+|-- **5L_distributed_wallets/**  
+|   Folder containing JSON files for distributed wallet addresses.
+|   |-- **5L_wallets.json**
+|   |-- **output_part_1.json**, **output_part_2.json**, etc.
 
 |-- **transaction_history/**  
 |   Folder for storing logs of transactions performed during testing.
 |   |-- **transaction_history_(start_date_time)_between_(end_date_time).csv**  
-|       Transaction logs in CSV format, with file names indicating the testing period.  
-|       Example: `transaction_history_10-01-2025_12_40_41_between_10-01-2025_12_50_44.csv`
 
 
 ## wallets.csv (csv headers)
