@@ -8,17 +8,20 @@ from wallet_utils import load_wallets, transaction_log, transaction_counter, sav
 import multiprocessing
 import sys
 import threading
-from dotenv import load_dotenv
-
-load_dotenv()
 # Environment variables
-CHAIN_ID = int(os.getenv('CHAIN_ID'))
-ETHER_VALUE = os.getenv('ETHER_VALUE')
-GAS_PRICE = os.getenv('GAS_PRICE')
-GAS = int(os.getenv('GAS'))
+load_dotenv()
+CHAIN_ID = int(os.getenv('CHAIN_ID', '0'))
+ETHER_VALUE = os.getenv('ETHER_VALUE', '0')
+GAS_PRICE = os.getenv('GAS_PRICE', '0')
+GAS = int(os.getenv('GAS', '21000'))
 SENDER_WALLET_PATH = os.getenv('SENDER_WALLET_PATH')
 RECEIVER_WALLET_PATH = os.getenv('RECEIVER_WALLET_PATH')
-CYCLE_DELAY = int(os.getenv('CYCLE_DELAY', '2'))  # Default 3 second delay between cycles
+CYCLE_DELAY = int(os.getenv('CYCLE_DELAY', '2')) 
+
+# Pre-calculate common Web3 values
+W3_DUMMY = Web3() # Used for utility functions only
+ETHER_VALUE_WEI = W3_DUMMY.to_wei(ETHER_VALUE, 'ether')
+GAS_PRICE_WEI = W3_DUMMY.to_wei(GAS_PRICE, 'gwei')
 
 print("\nLoading wallets...")
 sender_wallets = load_wallets(SENDER_WALLET_PATH,"sender wallets") 
@@ -197,25 +200,27 @@ class BlockchainTaskSet(TaskSet):
     
     @task
     def transfer(self):
-        sender_wallet, receiver_wallet = wallet_distributor.get_next_wallet_pair(self.worker_id)
-        if not sender_wallet or not receiver_wallet:
+        result = wallet_distributor.get_next_wallet_pair(self.worker_id)
+        if result is None or any(v is None for v in result):
             return
-
+        
+        sender_wallet, receiver_wallet = result
         start_time = time.time()
   
-        sender_address = Web3.to_checksum_address(sender_wallet['address'])
-        receiver_address = Web3.to_checksum_address(receiver_wallet['address'])
+        # Addresses are already checksummed during load_wallets
+        sender_address = sender_wallet['address']
+        receiver_address = receiver_wallet['address']
 
-        nonce = None   # <-- FIX: Ensure nonce is always defined
+        nonce = None
 
         try:
             # Use reused Web3 connection
             nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
             txn = {
                 'to': receiver_address,
-                'value': self.web3.to_wei(ETHER_VALUE, 'ether'),
+                'value': ETHER_VALUE_WEI,
                 'gas': GAS,
-                'gasPrice': self.web3.to_wei(GAS_PRICE, 'gwei'),
+                'gasPrice': GAS_PRICE_WEI,
                 'nonce': nonce,
                 'chainId': CHAIN_ID
             }
@@ -241,35 +246,31 @@ class BlockchainTaskSet(TaskSet):
                     if "error" in response_json:
                         error_msg = response_json["error"]["message"]
                         self._handle_transaction_result(
-                            sender_address, None, "Failed", nonce,time_taken, error_msg, self.worker_id
+                            sender_address, None, "Failed", nonce, time_taken, error_msg, self.worker_id
                         )
                         response.failure(error_msg)
                     else:
                         tx_hash = response_json.get("result")
                         self._handle_transaction_result(
-                            sender_address, tx_hash, "Success", nonce, time_taken, "",self.worker_id
+                            sender_address, tx_hash, "Success", nonce, time_taken, "", self.worker_id
                         )
                         response.success()
-                except json.JSONDecodeError:
-
-                    error_msg = f"Invalid JSON response:  Status Code: {response.status_code} "
-
+                except (json.JSONDecodeError, ValueError):
+                    error_msg = f"Invalid JSON response: Status Code: {response.status_code}"
                     self._handle_transaction_result(
-                        sender_address, None, "Failed", nonce,time_taken, error_msg,self.worker_id
+                        sender_address, None, "Failed", nonce, time_taken, error_msg, self.worker_id
                     )
                     response.failure(error_msg)
 
                 save_transaction_log()
                 
         except Exception as e:
-            print("Inside  except Exception---->",e)
-            error_msg = str(e)
-
-            # Measure how long this request took before failing
             elapsed = time.time() - start_time
+            error_msg = str(e)
+            print(f"[RETRYABLE ERROR] Worker {self.worker_id}: {error_msg}")
 
             self._handle_transaction_result(
-                sender_address, None, "Failed", nonce,time.time() - start_time, error_msg,self.worker_id
+                sender_address, None, "Failed", nonce, elapsed, error_msg, self.worker_id
             )
               
             # ✅ Record failure in Locust

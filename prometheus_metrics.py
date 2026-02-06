@@ -16,9 +16,13 @@ FAILED_TRANSACTIONS = Gauge('failed_transactions', 'Current number of failed tra
 
 def fetch_locust_metrics():
     """Fetch metrics from Locust API continuously."""
+    session = requests.Session()
+    session.headers.update({"User-Agent": "Prometheus-Metrics-Fetcher"})
+    
     while True:
         try:
-            response = requests.get(LOCUST_MASTER_IP_URL)
+            response = session.get(LOCUST_MASTER_IP_URL, timeout=5)
+            response.raise_for_status()
             data = response.json()
             for stat in data.get("stats", []):
                 if stat["name"] == "//":

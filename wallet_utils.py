@@ -22,6 +22,12 @@ def load_wallets(file_path,wallet_type):
             wallets = json.load(f)
             if not isinstance(wallets, list):
                 raise ValueError("Wallet file should contain a JSON array")
+            
+            # Pre-checksum addresses to save CPU during test execution
+            for wallet in wallets:
+                if 'address' in wallet:
+                    wallet['address'] = Web3.to_checksum_address(wallet['address'])
+            
             print(f"Successfully loaded {len(wallets)} wallets")
             return wallets
     except Exception as e:
@@ -55,14 +61,19 @@ def save_transaction_log():
         print("No transactions to save")
         return
     
-    print(f"Saving {len(transaction_log)} transactions to log")
     try:
         with log_lock:
+            # Copy and clear local log quickly to minimize lock contention
+            log_to_save = transaction_log[:]
+            transaction_log.clear()
+            
+            if not log_to_save:
+                return
+
             with open(transaction_log_file, mode='a', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerows(transaction_log)
-            print("Transactions saved successfully")
-            transaction_log.clear()  # Clear only after successful save
+                writer.writerows(log_to_save)
+            print(f"Transactions saved successfully ({len(log_to_save)} records)")
     except Exception as e:
         print(f"Error saving transactions: {e}")
 
