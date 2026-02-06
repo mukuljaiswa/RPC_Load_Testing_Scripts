@@ -19,7 +19,6 @@ GAS = int(os.getenv('GAS', '21000'))
 SENDER_WALLET_PATH = os.getenv('SENDER_WALLET_PATH')
 RECEIVER_WALLET_PATH = os.getenv('RECEIVER_WALLET_PATH')
 CYCLE_DELAY = int(os.getenv('CYCLE_DELAY', '2')) 
-
 # Pre-calculate common Web3 values
 W3_DUMMY = Web3() # Used for utility functions only
 ETHER_VALUE_WEI = W3_DUMMY.to_wei(ETHER_VALUE, 'ether')
@@ -61,7 +60,7 @@ print(f"[INFO] Configured to use {worker_count} workers\n")
 
 class WalletDistributor:
     _instance = None
-    _lock = threading.Lock()
+    _lock = threading.RLock()
 
     def __new__(cls):
         with cls._lock:
@@ -76,7 +75,7 @@ class WalletDistributor:
         self.cycle_complete = False
         self.cycle_count = 0
         self.cycle_delay = CYCLE_DELAY
-        self._cycle_lock = threading.Lock()  # Only for cycle management
+        self._cycle_lock = threading.RLock()  # Protect distribution and cycle logic
         print("[WALLET_DISTRIBUTOR] Initialized wallet distributor with cycle delay")
 
     def _calculate_worker_range(self, worker_id):
@@ -118,21 +117,20 @@ class WalletDistributor:
                     mode = "Single worker" if not use_multiprocessing else f"Worker {worker_id}"
                     print(f"[ASSIGNMENT] {mode} assigned wallets {start}-{end-1} (total {len(sender_wallets)})")
 
-        worker_data = self.worker_assignments[worker_id]
-        
-        # Atomic operation - get current index without lock
-        current_index = worker_data['current']
-        
-        # If we've reached the end of our range
-        if current_index >= worker_data['end']:
-            return self._handle_cycle_completion(worker_id, worker_data)
-        
-        # Atomic increment for sender
-        worker_data['current'] = current_index + 1
-        
-        # Atomic increment for receiver (no lock needed)
-        receiver_index = self._receiver_counter
-        self._receiver_counter = (receiver_index + 1) % len(receiver_wallets)
+        with self._cycle_lock:
+            worker_data = self.worker_assignments[worker_id]
+            current_index = worker_data['current']
+            
+            # If we've reached the end of our range
+            if current_index >= worker_data['end']:
+                return self._handle_cycle_completion(worker_id, worker_data)
+            
+            # Safe increments
+            worker_data['current'] = current_index + 1
+            
+            # Safe increment for receiver
+            receiver_index = self._receiver_counter
+            self._receiver_counter = (receiver_index + 1) % len(receiver_wallets)
 
         sender_wallet = sender_wallets[current_index]
         receiver_wallet = receiver_wallets[receiver_index]
@@ -278,7 +276,7 @@ class BlockchainTaskSet(TaskSet):
             # ✅ Record failure in Locust
             events.request.fire(
                     request_type="POST",
-                    name="///",
+                    name="/",
                     response_time=elapsed * 1000,  # ms
                     response_length=0,
                     exception=e,
@@ -289,18 +287,18 @@ class BlockchainTaskSet(TaskSet):
             save_transaction_log()
             raise
 
-    def _handle_transaction_result(self, sender, tx_hash, status, nonce,time_taken, error_msg,worker_Id):
+    def _handle_transaction_result(self, sender, tx_hash, status, nonce, time_taken, error_msg, worker_id):
         transaction_log.append([
             sender,
             tx_hash or "N/A",
             status,
             f"{time_taken:.2f}s",
             nonce,
-            "worker "+str(worker_Id)
+            f"Worker {worker_id}"
         ])
         
         color = "\033[92m" if status == "Success" else "\033[91m"
-        print(f"{color}[Worker {self.worker_id}] {status}\033[0m: "
+        print(f"{color}[Worker {worker_id}] {status}\033[0m: "
               f"Address: {sender} | "
               f"Tx Hash: {tx_hash or 'N/A'} | "
               f"Nonce: {nonce} | "
