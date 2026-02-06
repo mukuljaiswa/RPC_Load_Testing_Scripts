@@ -8,6 +8,8 @@ from wallet_utils import load_wallets, transaction_log, transaction_counter, sav
 import multiprocessing
 import sys
 import threading
+from dotenv import load_dotenv
+
 # Environment variables
 load_dotenv()
 CHAIN_ID = int(os.getenv('CHAIN_ID', '0'))
