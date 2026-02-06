@@ -183,6 +183,9 @@ class BlockchainTaskSet(TaskSet):
         # Reuse Web3 connection
         self._web3 = None
         
+        # Optimistic Nonce Tracking: {address: next_nonce}
+        self.wallet_nonces = {}
+        
         print(f"[INFO] Worker {self.worker_id} initialized")
 
     def _get_worker_id(self):
@@ -214,8 +217,15 @@ class BlockchainTaskSet(TaskSet):
         nonce = None
 
         try:
-            # Use reused Web3 connection
-            nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
+            # 🚀 OPTIMIZATION: Local Nonce Tracking
+            # Check if we have a locally tracked nonce for this address
+            if sender_address in self.wallet_nonces:
+                nonce = self.wallet_nonces[sender_address]
+            else:
+                # First time seeing this wallet? Fetch from network
+                nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
+                self.wallet_nonces[sender_address] = nonce
+
             txn = {
                 'to': receiver_address,
                 'value': ETHER_VALUE_WEI,
@@ -225,6 +235,9 @@ class BlockchainTaskSet(TaskSet):
                 'chainId': CHAIN_ID
             }
 
+            # Optimistically increment for the NEXT time we see this wallet
+            # This ensures we don't wait for mining and keep filling the mempool
+            self.wallet_nonces[sender_address] = nonce + 1
     
             signed_txn = self.web3.eth.account.sign_transaction(txn, sender_wallet['privateKey'])
                         
@@ -245,6 +258,11 @@ class BlockchainTaskSet(TaskSet):
                     response_json = response.json()
                     if "error" in response_json:
                         error_msg = response_json["error"]["message"]
+                        
+                        # ⚠️ FAILURE RECOVERY: Invalidate local nonce so we fetch fresh next time
+                        if sender_address in self.wallet_nonces:
+                            del self.wallet_nonces[sender_address]
+
                         self._handle_transaction_result(
                             sender_address, None, "Failed", nonce, time_taken, error_msg, self.worker_id
                         )
@@ -257,6 +275,11 @@ class BlockchainTaskSet(TaskSet):
                         response.success()
                 except (json.JSONDecodeError, ValueError):
                     error_msg = f"Invalid JSON response: Status Code: {response.status_code}"
+                    
+                    # ⚠️ FAILURE RECOVERY
+                    if sender_address in self.wallet_nonces:
+                        del self.wallet_nonces[sender_address]
+
                     self._handle_transaction_result(
                         sender_address, None, "Failed", nonce, time_taken, error_msg, self.worker_id
                     )
@@ -268,6 +291,10 @@ class BlockchainTaskSet(TaskSet):
             elapsed = time.time() - start_time
             error_msg = str(e)
             print(f"[RETRYABLE ERROR] Worker {self.worker_id}: {error_msg}")
+
+            # ⚠️ FAILURE RECOVERY: Invalidate local nonce
+            if sender_address in self.wallet_nonces:
+                del self.wallet_nonces[sender_address]
 
             self._handle_transaction_result(
                 sender_address, None, "Failed", nonce, elapsed, error_msg, self.worker_id
