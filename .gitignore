@@ -114,7 +114,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+# .env
 .venv
 env/
 venv/
@@ -163,11 +163,11 @@ Thumbs.db
 *.swo
 
 # Project specific ignores
-transaction_history/
-5L_distributed_wallets/
-20L_distributed_wallets/
-wallets/
-test/
-*.csv
+# transaction_history/
+# 5L_distributed_wallets/
+# 20L_distributed_wallets/
+# wallets/
+# test/
+# *.csv
 # If you want to keep the headers or templates of CSVs, you can use:
 # !wallets_template.csv
