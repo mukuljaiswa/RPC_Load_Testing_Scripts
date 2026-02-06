@@ -171,3 +171,6 @@ Thumbs.db
 # *.csv
 # If you want to keep the headers or templates of CSVs, you can use:
 # !wallets_template.csv
+
+# Valid transaction logs
+transaction_history/*.csv

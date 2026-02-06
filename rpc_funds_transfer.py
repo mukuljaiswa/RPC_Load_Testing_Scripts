@@ -185,6 +185,8 @@ class BlockchainTaskSet(TaskSet):
         
         # Optimistic Nonce Tracking: {address: next_nonce}
         self.wallet_nonces = {}
+        # Sync Counter: {address: count_since_last_sync}
+        self.nonce_sync_counters = {}
         
         print(f"[INFO] Worker {self.worker_id} initialized")
 
@@ -217,14 +219,24 @@ class BlockchainTaskSet(TaskSet):
         nonce = None
 
         try:
-            # 🚀 OPTIMIZATION: Local Nonce Tracking
-            # Check if we have a locally tracked nonce for this address
-            if sender_address in self.wallet_nonces:
+            # 🚀 OPTIMIZATION: Local Nonce Tracking (with Periodic Sync)
+            # Check if we need to force a sync (every 50 transactions per wallet)
+            force_sync = False
+            current_count = self.nonce_sync_counters.get(sender_address, 0)
+            
+            if current_count >= 50:
+                # print(f"[SYNC] Refreshing nonce for {sender_address} after 50 transactions")
+                force_sync = True
+            
+            # Check if we have a locally tracked nonce for this address AND we aren't forcing a sync
+            if not force_sync and sender_address in self.wallet_nonces:
                 nonce = self.wallet_nonces[sender_address]
             else:
-                # First time seeing this wallet? Fetch from network
+                # First time seeing this wallet OR Forced Sync
+                # Fetch pending nonce from network to resync and handle stuck transactions
                 nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
                 self.wallet_nonces[sender_address] = nonce
+                self.nonce_sync_counters[sender_address] = 0  # Reset counter after network sync
 
             txn = {
                 'to': receiver_address,
@@ -238,6 +250,9 @@ class BlockchainTaskSet(TaskSet):
             # Optimistically increment for the NEXT time we see this wallet
             # This ensures we don't wait for mining and keep filling the mempool
             self.wallet_nonces[sender_address] = nonce + 1
+            
+            # Increment the sync counter (unless we just reset it, but +1 is fine, it will grow to 50 again)
+            self.nonce_sync_counters[sender_address] = self.nonce_sync_counters.get(sender_address, 0) + 1
     
             signed_txn = self.web3.eth.account.sign_transaction(txn, sender_wallet['privateKey'])
                         
@@ -321,13 +336,17 @@ class BlockchainTaskSet(TaskSet):
             status,
             f"{time_taken:.2f}s",
             nonce,
-            f"Worker {worker_id}"
+            f"Worker {worker_id}",
+            error_msg # Added Error Message Column
         ])
         
-        color = "\033[92m" if status == "Success" else "\033[91m"
-        print(f"{color}[Worker {worker_id}] {status}\033[0m: "
-              f"Address: {sender} | "
-              f"Tx Hash: {tx_hash or 'N/A'} | "
-              f"Nonce: {nonce} | "
-              f"Time: {time_taken:.2f}s | "
-              f"{error_msg}")
+        # ⚡ OPTIMIZATION: Disable console print for success to reduce IO latency
+        # Only print errors or significant events
+        if status != "Success":
+            color = "\033[91m"
+            print(f"{color}[Worker {worker_id}] {status}\033[0m: "
+                  f"Address: {sender} | "
+                  f"Tx Hash: {tx_hash or 'N/A'} | "
+                  f"Nonce: {nonce} | "
+                  f"Time: {time_taken:.2f}s | "
+                  f"{error_msg}")

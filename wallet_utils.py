@@ -35,16 +35,20 @@ def load_wallets(file_path,wallet_type):
         raise
 
 def check_and_create_transaction_log_file():
-    """Ensure transaction log file exists with proper header"""
+    """Ensure transaction log file exists with proper header (Unique per Process)"""
     folder = 'transaction_history'
     os.makedirs(folder, exist_ok=True)
-    filename = os.path.join(folder, "transaction_history.csv")
+    
+    # ⚡ FIX: Use PID to ensure every worker has its OWN file
+    # This prevents "File not found" and race conditions when renaming
+    pid = os.getpid()
+    filename = os.path.join(folder, f"transaction_history_worker_{pid}.csv")
     
     if not os.path.isfile(filename):
-        print("Creating new transaction log file")
+        # print(f"Creating new transaction log file for PID {pid}")
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["Sender Address", "Transaction Hash", "Status", "Time Taken", "Nonce"])
+            writer.writerow(["Sender Address", "Transaction Hash", "Status", "Time Taken", "Nonce", "Worker ID", "Error Message"])
     return filename
 
 def initialize_transaction_log():
@@ -54,11 +58,17 @@ def initialize_transaction_log():
         transaction_log_file = check_and_create_transaction_log_file()
         print("Transaction log initialized")
 
-def save_transaction_log():
-    """Save all pending transactions to the log file"""
+def save_transaction_log(force=False):
+    """Save all pending transactions to the log file (Batched)"""
     global transaction_log
+    
+    # ⚡ OPTIMIZATION: Only write to disk if we have enough data or are forced
+    # This prevents opening/closing the file 1000 times per second
+    if not force and len(transaction_log) < 1000:
+        return
+
     if not transaction_log:
-        print("No transactions to save")
+        # print("No transactions to save") # Silent return to avoid spam
         return
     
     try:
@@ -78,37 +88,27 @@ def save_transaction_log():
         print(f"Error saving transactions: {e}")
 
 def rename_transaction_log_file(test_start_time):
-    """Rename log file with timestamps after test completes"""
+    """Rename THIS worker's log file with timestamps after test completes"""
     global transaction_log_file
-    if not transaction_log_file:
-        print("No transaction log file to rename")
+    if not transaction_log_file or not os.path.exists(transaction_log_file):
+        # process might have already renamed it or started without one
         return
     
     try:
         stop_time = datetime.now()
         start_str = test_start_time.strftime("%d-%m-%Y_%H_%M_%S")
         stop_str = stop_time.strftime("%d-%m-%Y_%H_%M_%S")
-        new_filename = f"transaction_history/transaction_history_{start_str}_to_{stop_str}.csv"
+        pid = os.getpid()
+        
+        # New name includes start/stop time AND worker PID
+        new_filename = f"transaction_history/transaction_log_{start_str}_to_{stop_str}_worker_{pid}.csv"
         
         # Ensure all transactions are saved before renaming
-        save_transaction_log()
+        save_transaction_log(force=True)
         
         os.rename(transaction_log_file, new_filename)
-        transaction_log_file = None
-        print(f"Renamed transaction log to {new_filename}")
+        # print(f"Renamed log to {new_filename}")
         
-        # Ensure header exists in new file
-        ensure_header_in_file(new_filename)
     except Exception as e:
-        print(f"Error renaming transaction log: {e}")
+        print(f"Error renaming transaction log for PID {os.getpid()}: {e}")
 
-def ensure_header_in_file(filename):
-    """Ensure CSV file has proper header row"""
-    try:
-        if not os.path.isfile(filename):
-            with open(filename, mode='w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(["Sender Address", "Transaction Hash", "Status", "Time Taken", "Nonce"])
-            print("Created new file with header")
-    except Exception as e:
-        print(f"Error ensuring header exists: {e}")

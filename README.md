@@ -39,7 +39,8 @@ This project contains a Locust load testing script for RPC services. The main sc
 
 |-- **transaction_history/**  
 |   Folder for storing logs of transactions performed during testing.
-|   |-- **transaction_history_(start_date_time)_between_(end_date_time).csv**  
+|   Folder for storing logs of transactions performed during testing.
+|   |-- **transaction_log_(time)_worker_(pid).csv** (Unique file per worker)
 
 
 ## wallets.csv (csv headers)
@@ -54,6 +55,9 @@ This project contains a Locust load testing script for RPC services. The main sc
 - **Transaction Hash** – Unique hash of the transaction  
 - **Status** – Transaction status (Success/Fail)  
 - **Time Taken** – Time taken for the transaction to complete  
+- **Nonce** - The nonce used for the transaction
+- **Worker ID** - The process ID of the worker executing the tx
+- **Error Message** - Detailed error if the transaction failed
 
 ## Setup Instructions
 
@@ -151,7 +155,7 @@ Click the Stop button on the web interface to halt the test.
 
 A Locust HTML report can be downloaded from the web interface.
 
-After stopping, the **transaction_history_(start_date_time)_between_(end_date_time).csv** file will be updated in the **transaction_history** folder.
+After stopping, the **transaction_log_..._worker_PID.csv** files will be generated in the **transaction_history** folder (one file per active worker).
 
 ### 10.Multi-Core Load Testing
 
