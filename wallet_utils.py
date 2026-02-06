@@ -11,62 +11,11 @@ transaction_log_file = None
 log_lock = threading.Lock()
 transaction_log = []
 
-
 transaction_counter = {"total_attempted": 0, "total_successful": 0}
-
-# class NonceManager:
-#     def __init__(self):
-#         self._nonce_store = defaultdict(int)
-
-#         print("self._nonce_store inside NonceManager:", self._nonce_store)
-
-#         self._nonce_locks = defaultdict(threading.Lock)
-#         self._batch_size = 5
-#         self._batch_store = defaultdict(list)
-#         self._batch_lock = threading.Lock()
-#         print("[INFO] Initialized NonceManager")
-
-#     def get_next_nonce(self, web3: Web3, address: str) -> int:
-#         """Thread-safe nonce management"""
-#         with self._nonce_locks[address]:
-#             if self._batch_store[address]:
-#                 return self._batch_store[address].pop(0)
-            
-#             on_chain_nonce = web3.eth.get_transaction_count(address, 'pending')
-#             current_nonce = max(on_chain_nonce, self._nonce_store.get(address, 0))
-            
-#             with self._batch_lock:
-#                 self._batch_store[address] = list(range(current_nonce, current_nonce + self._batch_size))
-#                 self._nonce_store[address] = current_nonce + self._batch_size
-            
-#             return self._batch_store[address].pop(0)
-
-#     def update_nonce(self, address: str, new_nonce: int):
-#         with self._nonce_locks[address]:
-#             self._nonce_store[address] = max(new_nonce, self._nonce_store.get(address, 0))
-#             #print("self._nonce_store inside update_nonce:", self._nonce_store)
-
-
-#     def reset_address(self, address: str):
-#         with self._nonce_locks[address]:
-#             if address in self._nonce_store:
-#                 del self._nonce_store[address]
-#             if address in self._batch_store:
-#                 del self._batch_store[address]
-
-#     def reset_all_nonces(self):
-#         """Clear all nonce tracking"""
-#         with self._batch_lock:
-#             self._nonce_store.clear()
-#             self._batch_store.clear()
-#         print("[RESET] Cleared all nonce tracking")
-
-# nonce_manager = NonceManager()
 
 def load_wallets(file_path,wallet_type):
     """Load wallets from JSON file with validation"""
 
-    
     print(f"Loading {wallet_type} wallets from {file_path}")
     try:
         with open(file_path, 'r') as f:
