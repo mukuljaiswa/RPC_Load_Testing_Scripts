@@ -17,8 +17,9 @@ Instead of asking the blockchain for the `nonce` before every single transaction
 ### 2. Periodic Nonce Synchronization (Self-Healing)
 To prevent local nonce drift from becoming permanent:
 *   The script maintains a counter for every wallet.
-*   **Every 50 transactions**, it forces a network call (`get_transaction_count`) to verify the correct nonce.
+*   **Every 20 transactions**, it forces a network call (`get_transaction_count`) to verify the correct nonce.
 *   This ensures that if transactions were silently dropped or stuck, the script "re-syncs" automatically without stopping.
+*   **High Gas Priority:** The script uses a static high gas price (120 Gwei) to ensure transactions are mined immediately and do not get stuck in the mempool.
 
 ### 3. Failure Recovery Mechanism
 If a transaction fails (e.g., returns "Nonce too low" or an RPC error):
@@ -55,13 +56,13 @@ def transfer(self):
     
     # 2. Get Nonce (Optimized with Sync)
     current_count = self.nonce_sync_counters.get(sender_address, 0)
-    force_sync = current_count >= 50
+    force_sync = current_count >= 20
     
     if not force_sync and sender_address in self.wallet_nonces:
          # FAST: Use local memory
          nonce = self.wallet_nonces[sender_address]
     else:
-         # SLOW: Network call (First time, Error recovery, or Every 50th tx)
+         # SLOW: Network call (First time, Error recovery, or Every 20th tx)
          nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
          self.wallet_nonces[sender_address] = nonce
          self.nonce_sync_counters[sender_address] = 0

@@ -220,12 +220,13 @@ class BlockchainTaskSet(TaskSet):
 
         try:
             # 🚀 OPTIMIZATION: Local Nonce Tracking (with Periodic Sync)
-            # Check if we need to force a sync (every 50 transactions per wallet)
+            # Check if we need to force a sync (every 20 transactions per wallet)
+            # Reduced from 50 to 20 to recover faster from stuck/dropped transactions
             force_sync = False
             current_count = self.nonce_sync_counters.get(sender_address, 0)
             
-            if current_count >= 50:
-                # print(f"[SYNC] Refreshing nonce for {sender_address} after 50 transactions")
+            if current_count >= 20:
+                # print(f"[SYNC] Refreshing nonce for {sender_address} after 20 transactions")
                 force_sync = True
             
             # Check if we have a locally tracked nonce for this address AND we aren't forcing a sync
@@ -233,8 +234,17 @@ class BlockchainTaskSet(TaskSet):
                 nonce = self.wallet_nonces[sender_address]
             else:
                 # First time seeing this wallet OR Forced Sync
-                # Fetch pending nonce from network to resync and handle stuck transactions
-                nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
+                # Fetch pending nonce from network to resync and handle stuck transactions  
+
+                print('11111111111')
+
+                try:
+                    nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
+                    print('22222222222')
+                except Exception as e:
+                    print(f"Error fetching nonce for {sender_address}: {e}")
+                    nonce = None
+
                 self.wallet_nonces[sender_address] = nonce
                 self.nonce_sync_counters[sender_address] = 0  # Reset counter after network sync
 
@@ -262,7 +272,7 @@ class BlockchainTaskSet(TaskSet):
                 "params":[f"0x{signed_txn.raw_transaction.hex()}"],
                 "id": 1
             }
-            
+    
             with self.client.post("/", 
                                headers={'Content-Type': 'application/json'},
                                json=data,
