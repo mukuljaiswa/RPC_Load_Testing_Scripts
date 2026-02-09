@@ -236,11 +236,8 @@ class BlockchainTaskSet(TaskSet):
                 # First time seeing this wallet OR Forced Sync
                 # Fetch pending nonce from network to resync and handle stuck transactions  
 
-                print('11111111111')
-
                 try:
                     nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
-                    print('22222222222')
                 except Exception as e:
                     print(f"Error fetching nonce for {sender_address}: {e}")
                     nonce = None
@@ -352,11 +349,10 @@ class BlockchainTaskSet(TaskSet):
         
         # ⚡ OPTIMIZATION: Disable console print for success to reduce IO latency
         # Only print errors or significant events
-        if status != "Success":
-            color = "\033[91m"
-            print(f"{color}[Worker {worker_id}] {status}\033[0m: "
-                  f"Address: {sender} | "
-                  f"Tx Hash: {tx_hash or 'N/A'} | "
-                  f"Nonce: {nonce} | "
-                  f"Time: {time_taken:.2f}s | "
-                  f"{error_msg}")
+        color = "\033[91m" if status != "Success" else "\033[92m"
+        print(f"{color}[Worker {worker_id}] {status}\033[0m: "
+              f"Address: {sender} | "
+              f"Tx Hash: {tx_hash or 'N/A'} | "
+              f"Nonce: {nonce} | "
+              f"Time: {time_taken:.2f}s | "
+              f"{error_msg}")
