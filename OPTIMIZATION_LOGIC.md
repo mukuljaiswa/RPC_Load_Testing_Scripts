@@ -61,7 +61,7 @@ def transfer(self):
     
     # 2. Get Nonce (Optimized with Sync)
     current_count = self.nonce_sync_counters.get(sender_address, 0)
-    force_sync = current_count >= 20
+    force_sync = current_count >= 3
     
     if not force_sync and sender_address in self.wallet_nonces:
          # FAST: Use local memory
