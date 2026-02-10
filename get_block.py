@@ -10,9 +10,10 @@ RPC_HOST = "https://incarnation-rpc.bdagscan.com"
 CHAIN_ID = 1404
 
 START_BLOCK = 100
-END_BLOCK = 53274
+END_BLOCK = 80000
 
-OUTPUT_FILE = "incarnation_block_metrics_100_53274.xlsx"
+
+OUTPUT_FILE = "incarnation_block_metrics_100_80000.xlsx"
 # =========================================
 
 # Connect to RPC

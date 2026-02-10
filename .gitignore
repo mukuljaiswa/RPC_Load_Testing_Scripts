@@ -174,3 +174,7 @@ Thumbs.db
 
 # Valid transaction logs
 transaction_history/*.csv
+
+# Load Test Reports
+*.html
+*.xlsx

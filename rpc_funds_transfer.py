@@ -55,8 +55,18 @@ for i, arg in enumerate(sys.argv):
                 print(f"ERROR: Invalid value for --processes. Using default {worker_count} workers.")
         break
 
-print(f"[INFO] System has {available_cores} CPU cores")
-print(f"[INFO] Configured to use {worker_count} workers\n")
+# 🛡️ Fallback: If we assume explicit worker mode, we MUST use multiprocessing logic
+# This handles cases where locust spawns workers but strips the --processes arg
+if "--worker" in sys.argv:
+    use_multiprocessing = True
+
+if use_multiprocessing:
+    print(f"[INFO] System has {available_cores} CPU cores")
+    print(f"[INFO] Configured to use {worker_count} workers (Worker Mode: {'Active' if '--worker' in sys.argv else 'Local Process'})")
+else:
+    print(f"[INFO] Running in single-process mode (Sequence execution)")
+
+print(f"\n")
 
 class WalletDistributor:
     _instance = None
@@ -217,39 +227,84 @@ class BlockchainTaskSet(TaskSet):
         receiver_address = receiver_wallet['address']
 
         nonce = None
+        is_recovery_mode = False
 
         try:
             # 🚀 OPTIMIZATION: Local Nonce Tracking (with Periodic Sync)
-            # Check if we need to force a sync (every 20 transactions per wallet)
-            # Reduced from 50 to 20 to recover faster from stuck/dropped transactions
+            # Check if we need to force a sync (every 3 transactions per wallet)
+            # Reduced to 3 to recover faster for large wallet sets (500k+)
             force_sync = False
             current_count = self.nonce_sync_counters.get(sender_address, 0)
             
-            if current_count >= 20:
-                # print(f"[SYNC] Refreshing nonce for {sender_address} after 20 transactions")
+            if current_count >= 3:
+                # print(f"[SYNC] Refreshing nonce for {sender_address} after 3 transactions")
                 force_sync = True
             
             # Check if we have a locally tracked nonce for this address AND we aren't forcing a sync
             if not force_sync and sender_address in self.wallet_nonces:
-                nonce = self.wallet_nonces[sender_address]
-            else:
-                # First time seeing this wallet OR Forced Sync
+                # 🛡️ Defense: Validate cached nonce type
+                cached_nonce = self.wallet_nonces[sender_address]
+                if isinstance(cached_nonce, int) and cached_nonce >= 0:
+                    nonce = cached_nonce
+                else:
+                    # Invalid cache detected, force sync
+                    # print(f"[WARN] Invalid cached nonce {cached_nonce} for {sender_address}, forcing sync")
+                    del self.wallet_nonces[sender_address]
+                    nonce = None 
+
+            if nonce is None:
+                # First time seeing this wallet OR Forced Sync OR Cache Invalidated
                 # Fetch pending nonce from network to resync and handle stuck transactions  
-
                 try:
-                    nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
-                except Exception as e:
-                    print(f"Error fetching nonce for {sender_address}: {e}")
-                    nonce = None
+                    # 🚀 INTELLIGENT RECOVERY: Check "latest" (mined) vs "pending"
+                    # If the gap is too large, it means transactions are stuck in mempool.
+                    # We rewind to 'latest' to re-broadcast the stuck ones.
+                    
+                    mined_nonce = self.web3.eth.get_transaction_count(sender_address, 'latest')
+                    pending_nonce = self.web3.eth.get_transaction_count(sender_address, 'pending')
+                    
+                    gap = pending_nonce - mined_nonce
+                    
+                    if gap > 3:
+                        # ⚠️ GAP DETECTED: Too many unmined transactions. 
+                        # Rewind to 'latest' to re-submit the stuck nonce (e.g., Nonce 10).
+                        # print(f"[RECOVERY] Gap {gap} detected for {sender_address}. Rewinding to {mined_nonce}")
+                        nonce = mined_nonce
+                        is_recovery_mode = True
+                    else:
+                        # Standard Sync: Continue from pending (filling the pipe)
+                        nonce = pending_nonce
+                    
+                    # 🛡️ Defense: Validate network response
+                    if not isinstance(nonce, int) or nonce < 0:
+                         raise ValueError(f"Network returned invalid nonce: {nonce}")
 
-                self.wallet_nonces[sender_address] = nonce
-                self.nonce_sync_counters[sender_address] = 0  # Reset counter after network sync
+                    # Update cache only if successful
+                    self.wallet_nonces[sender_address] = nonce
+                    self.nonce_sync_counters[sender_address] = 0  # Reset counter after network sync
+                    
+                except Exception as e:
+                    # print(f"Error fetching nonce for {sender_address}: {e}")
+                    # Invalidate cache so we retry next time
+                    if sender_address in self.wallet_nonces:
+                        del self.wallet_nonces[sender_address]
+                    return
+
+            # CRITICAL CHECK: Ensure nonce is valid before arithmetic
+            if nonce is None:
+                # Invalidate cache if it corrupted
+                if sender_address in self.wallet_nonces:
+                    del self.wallet_nonces[sender_address]
+                return
+
+            # ⛽ GAS STRATEGY: Boost gas by 10% if recovering (Replacement Transaction)
+            current_gas_price = int(GAS_PRICE_WEI * 1.1) if is_recovery_mode else GAS_PRICE_WEI
 
             txn = {
                 'to': receiver_address,
                 'value': ETHER_VALUE_WEI,
                 'gas': GAS,
-                'gasPrice': GAS_PRICE_WEI,
+                'gasPrice': current_gas_price,
                 'nonce': nonce,
                 'chainId': CHAIN_ID
             }

@@ -14,14 +14,19 @@ Instead of asking the blockchain for the `nonce` before every single transaction
 
 **Benefit:** Cuts network calls by **50%** and allows filling the mempool with sequential transactions even if previous ones are still pending.
 
-### 2. Periodic Nonce Synchronization (Self-Healing)
-To prevent local nonce drift from becoming permanent:
-*   The script maintains a counter for every wallet.
-*   **Every 20 transactions**, it forces a network call (`get_transaction_count`) to verify the correct nonce.
-*   This ensures that if transactions were silently dropped or stuck, the script "re-syncs" automatically without stopping.
-*   **High Gas Priority:** The script uses a static high gas price (120 Gwei) to ensure transactions are mined immediately and do not get stuck in the mempool.
+### 2. Intelligent Recovery (Gap Detection & Rewind)
+To prevent "stuck" transactions from blocking the entire pipeline:
+*   **Gap Check:** Every 3 transactions, the script checks the gap between `pending` (local/mempool) nonce and `latest` (mined) nonce.
+    *   `Gap = Pending Nonce - Mined Nonce`
+*   **Auto-Rewind:** If `Gap > 3`, it means >3 transactions are stuck in the mempool.
+*   **Normal Sync:** If `Gap <= 3`, it simply syncs to `pending` to keep the pipe full.
 
-### 3. Failure Recovery Mechanism
+### 3. Dynamic Gas Strategy (The "Push")
+*   **Standard Mode:** Uses `GAS_PRICE` from environment variables.
+*   **Recovery Mode:** When rewinding to fix a stuck nonce, the script **boosts gas price by 10%**.
+    *   This creates a valid "Reception Transaction" that miners are incentivized to pick up, clearing the "cork" in the mempool.
+
+### 4. Failure Recovery Mechanism
 If a transaction fails (e.g., returns "Nonce too low" or an RPC error):
 *   The script immediately **deletes the cached nonce** for that specific wallet.
 *   The next time that wallet is used, it forces a fresh fetch from the network to re-sync.
@@ -67,13 +72,22 @@ def transfer(self):
          self.wallet_nonces[sender_address] = nonce
          self.nonce_sync_counters[sender_address] = 0
 
-    # 3. Optimistic Increment
+    # 5. Type Safety & Error Handling (New)
+    # ---------------------------------------------------------
+    # CRITICAL: We now strictly validate nonce types to prevent crashes
+    if nonce is None or not isinstance(nonce, int) or nonce < 0:
+        # Invalid cache/network response -> Force re-sync next time
+        if sender_address in self.wallet_nonces:
+            del self.wallet_nonces[sender_address]
+        return # Skip this cycle safely
+    
+    # 6. Optimistic Increment
     self.wallet_nonces[sender_address] = nonce + 1
     
-    # 4. Send Transaction
+    # 7. Send Transaction
     # ... (sign and send) ...
 
-    # 5. Handle Errors (Recovery)
+    # 8. Handle Errors (Recovery)
     if error:
         del self.wallet_nonces[sender_address] # Reset cache to force fresh fetch
 ```
